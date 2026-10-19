@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Guessing Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f8f9fa;
+      background-image: 
+        linear-gradient(#e5e7eb 1px, transparent 1px),
+        linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #111827;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: #ffffff;
+      border: 2px solid #111827;
+      box-shadow: 6px 6px 0px #111827;
+      padding: 30px;
+    }
+
+    h1 {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px dashed #111827;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    p {
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn {
+      background: #ffffff;
+      border: 2px solid #111827;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 3px 3px 0px #111827;
+      transition: all 0.1s ease;
+    }
+
+    .btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0px #111827;
+    }
+
+    .btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px #111827;
+    }
+
+    .info-panel {
+      border: 1px solid #111827;
+      padding: 12px;
+      margin-bottom: 20px;
+      background: #f3f4f6;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input[type="number"] {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #111827;
+      font-size: 16px;
+      outline: none;
+      background: #ffffff;
+    }
+
+    .message {
+      padding: 12px;
+      border: 1px solid #111827;
+      margin-bottom: 20px;
+      font-size: 14px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+    }
+
+    .strategy-note {
+      font-size: 12px;
+      color: #4b5563;
+      border-top: 1px dashed #9ca3af;
+      padding-top: 10px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Guess The Number</h1>
+
+    <!-- Welcome Screen -->
+    <div id="screen-welcome" class="section active">
+      <p>Welcome! Select a difficulty level to start the game.</p>
+      <div class="btn-group">
+        <button class="btn" onclick="startGame('easy')">Easy (1 - 50)</button>
+        <button class="btn" onclick="startGame('medium')">Medium (1 - 100)</button>
+        <button class="btn" onclick="startGame('hard')">Hard (1 - 200)</button>
+      </div>
+    </div>
+
+    <!-- Gameplay Screen -->
+    <div id="screen-game" class="section">
+      <div class="info-panel">
+        <div class="info-row">
+          <span>Range:</span>
+          <strong id="display-range">1 - 100</strong>
+        </div>
+        <div class="info-row">
+          <span>Attempts Left:</span>
+          <strong id="display-attempts">0</strong>
+        </div>
+        <div class="info-row">
+          <span>Optimal Midpoint:</span>
+          <strong id="display-midpoint">-</strong>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <input type="number" id="user-guess" placeholder="Enter guess" min="1" onkeypress="handleKeyPress(event)">
+        <button class="btn" onclick="submitGuess()">Submit</button>
+      </div>
+
+      <div id="game-message" class="message">Enter a number to make your first guess.</div>
+
+      <div class="strategy-note">
+        Tip: Always guess the midpoint between your current range bounds to eliminate half the remaining numbers.
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="screen-result" class="section">
+      <p id="result-title" style="font-weight: bold; font-size: 18px;"></p>
+      <p id="result-detail"></p>
+
+      <div class="btn-group">
+        <button class="btn" onclick="showScreen('screen-welcome')">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentRange = { min: 1, max: 100 };
+    let secretAmount = 0;
+    let remainingAttempts = 0;
+    let maxAttempts = 0;
+
+    const config = {
+      easy: { min: 1, max: 50, attempts: 7 },
+      medium: { min: 1, max: 100, attempts: 8 },
+      hard: { min: 1, max: 200, attempts: 9 }
+    };
+
+    function showScreen(id) {
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function startGame(difficulty) {
+      const setting = config[difficulty];
+      currentRange = { min: setting.min, max: setting.max };
+      secretAmount = Math.floor(Math.random() * (setting.max - setting.min + 1)) + setting.min;
+      remainingAttempts = setting.attempts;
+      maxAttempts = setting.attempts;
+
+      document.getElementById('display-range').textContent = `${currentRange.min} - ${currentRange.max}`;
+      document.getElementById('display-attempts').textContent = remainingAttempts;
+      document.getElementById('user-guess').value = '';
+      document.getElementById('game-message').textContent = 'Enter a number to make your first guess.';
+
+      updateMidpoint();
+      showScreen('screen-game');
+    }
+
+    function updateMidpoint() {
+      const mid = Math.floor((currentRange.min + currentRange.max) / 2);
+      document.getElementById('display-midpoint').textContent = mid;
+    }
+
+    function submitGuess() {
+      const input = document.getElementById('user-guess');
+      const guess = parseInt(input.value);
+
+      if (isNaN(guess) || guess < currentRange.min || guess > currentRange.max) {
+        document.getElementById('game-message').textContent = `Please enter a valid number between ${currentRange.min} and ${currentRange.max}.`;
+        return;
+      }
+
+      remainingAttempts--;
+      document.getElementById('display-attempts').textContent = remainingAttempts;
+
+      if (guess === secretAmount) {
+        endGame(true);
+        return;
+      }
+
+      if (remainingAttempts <= 0) {
+        endGame(false);
+        return;
+      }
+
+      if (guess < secretAmount) {
+        currentRange.min = guess + 1;
+        document.getElementById('game-message').textContent = 'The secret number is HIGHER.';
+      } else {
+        currentRange.max = guess - 1;
+        document.getElementById('game-message').textContent = 'The secret number is LOWER.';
+      }
+
+      document.getElementById('display-range').textContent = `${currentRange.min} - ${currentRange.max}`;
+      updateMidpoint();
+      input.value = '';
+      input.focus();
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') {
+        submitGuess();
+      }
+    }
+
+    function endGame(isWin) {
+      const title = document.getElementById('result-title');
+      const detail = document.getElementById('result-detail');
+
+      if (isWin) {
+        title.textContent = 'Congratulations! You Won!';
+        detail.textContent = `You found the secret number ${secretAmount} using ${maxAttempts - remainingAttempts} attempt(s).`;
+      } else {
+        title.textContent = 'Game Over!';
+        detail.textContent = `You ran out of attempts. The secret number was ${secretAmount}.`;
+      }
+
+      showScreen('screen-result');
+    }
+  </script>
+</body>
+</html>
